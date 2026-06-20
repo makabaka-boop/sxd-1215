@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import type { GameEvent } from '../types';
 import { ArrowLeftRight, AlertTriangle, Timer, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore } from '../store/gameStore';
 
 interface EventBannerProps {
   events: GameEvent[];
@@ -38,13 +38,7 @@ const EventIcon = ({ type }: { type: string }) => {
 };
 
 export default function EventBanner({ events }: EventBannerProps) {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+  const gameTimeMs = useGameStore((s) => s.gameTimeMs);
   const activeEvents = events.filter((e) => !e.resolved);
 
   return (
@@ -52,10 +46,8 @@ export default function EventBanner({ events }: EventBannerProps) {
       <div className="flex flex-wrap gap-3 justify-center pt-20">
         <AnimatePresence mode="popLayout">
           {activeEvents.map((event) => {
-            const remainingSec = Math.max(
-              Math.ceil((event.triggerTime + event.duration - now) / 1000),
-              0
-            );
+            const elapsedSec = gameTimeMs / 1000 - event.triggerTime;
+            const remainingSec = Math.max(Math.ceil(event.duration - elapsedSec), 0);
             return (
               <motion.div
                 key={event.id}

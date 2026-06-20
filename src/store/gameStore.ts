@@ -18,6 +18,7 @@ import {
   computeFinalResult,
 } from '../utils/score';
 import { getLevelById } from '../data/levels';
+import { saveLastResult } from '../utils/storage';
 
 export type GameStatus = 'idle' | 'playing' | 'paused' | 'finished';
 
@@ -193,6 +194,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       playTimeMs: s.playTimeMs,
     });
 
+    saveLastResult(result);
+
     set({
       status: 'finished',
       lastResult: result,
@@ -303,6 +306,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         remainingMs: newRemainingMs,
         playTimeMs: newPlayTimeMs,
       });
+
+      saveLastResult(result);
 
       set({
         status: 'finished',
@@ -451,12 +456,41 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const s = get();
     if (s.status !== 'playing') return;
 
-    const sortedCount = s.baggages.filter(b => b.status === 'sorted').length;
+    const sortedBaggages = s.baggages.filter(b => b.status === 'sorted');
+    const sortedCount = sortedBaggages.length;
     let newToasts = s.toasts;
+
     if (sortedCount > 0) {
-      newToasts = addToast(newToasts, 'info', `已确认 ${sortedCount} 件分拣完成的行李`);
+      const bonusPerPiece = 3;
+      const totalBonus = sortedCount * bonusPerPiece;
+      const newScoreState = {
+        ...s.scoreState,
+        baseScore: s.scoreState.baseScore + totalBonus,
+      };
+      const confirmedIds = new Set(sortedBaggages.map(b => b.id));
+      const newBaggages = s.baggages.filter(b => !confirmedIds.has(b.id));
+      const newChannels = s.channels.map(ch => ({
+        ...ch,
+        baggageIds: ch.baggageIds.filter(id => !confirmedIds.has(id)),
+        currentLoad: Math.max(0, ch.currentLoad - ch.baggageIds.filter(id => confirmedIds.has(id)).length),
+      }));
+
+      newToasts = addToast(
+        newToasts,
+        'success',
+        `已确认 ${sortedCount} 件行李 +${totalBonus}`
+      );
+
+      set({
+        toasts: newToasts,
+        baggages: newBaggages,
+        channels: newChannels,
+        scoreState: newScoreState,
+      });
+    } else {
+      newToasts = addToast(newToasts, 'info', '暂无可确认的已分拣行李');
+      set({ toasts: newToasts });
     }
-    set({ toasts: newToasts });
   },
 
   handleOverweight: (baggageId: string) => {

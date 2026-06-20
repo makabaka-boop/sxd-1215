@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Channel, Flight } from '../types';
 import { getFlightColor } from '../data/levels';
 import { formatSec } from '../utils/baggage';
 import { Plane, MapPin, Package, Timer, ArrowRightLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { useGameStore } from '../store/gameStore';
 
 interface ChannelColumnProps {
   channel: Channel;
@@ -26,19 +27,14 @@ export default function ChannelColumn({
   onClick,
 }: ChannelColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(timer);
-  }, []);
+  const gameTimeMs = useGameStore((s) => s.gameTimeMs);
 
   const flightColor = getFlightColor(channel.flightId);
   const capacityPercent = channel.capacity > 0 ? (channel.currentLoad / channel.capacity) * 100 : 0;
   const showHighlight = isHighlighted || isDragOver;
 
   const boardingRemainingSec = channel.isBoarding && channel.boardingDeadline
-    ? Math.max(0, Math.ceil((channel.boardingDeadline - now) / 1000))
+    ? Math.max(0, Math.ceil((channel.boardingDeadline - gameTimeMs) / 1000))
     : 0;
 
   const handleDragOver = (e: React.DragEvent) => {

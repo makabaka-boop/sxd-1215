@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import type { Baggage } from '../types';
 import { getFlightColor } from '../data/levels';
 import { getWeightLevelColor, getPriorityLabel, getPriorityColor, getWeightLevelBgColor } from '../utils/baggage';
@@ -23,20 +22,15 @@ export default function BaggageCard({
   onHandleOverweight,
   onSecurityRecheck,
 }: BaggageCardProps) {
-  const [now, setNow] = useState(Date.now());
+  const gameTimeMs = useGameStore((s) => s.gameTimeMs);
   const level = useGameStore((s) => s.level);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(timer);
-  }, []);
 
   const flight = level?.flights.find((f) => f.id === baggage.flightId);
   const flightColor = getFlightColor(baggage.flightId);
   const weightPercent = Math.min((baggage.weight / 45) * 100, 100);
   const totalDuration = baggage.expiresAt - baggage.createdAt;
-  const remaining = baggage.expiresAt - now;
-  const expirePercent = Math.max((remaining / totalDuration) * 100, 0);
+  const remaining = Math.max(0, baggage.expiresAt - gameTimeMs);
+  const expirePercent = totalDuration > 0 ? Math.max((remaining / totalDuration) * 100, 0) : 0;
   const isExpiring = expirePercent < 30;
   const isOverweight = baggage.weightLevel === 'overweight';
   const needsSecurity = !baggage.isSecurityChecked;
