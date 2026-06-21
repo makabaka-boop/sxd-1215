@@ -155,6 +155,41 @@ export interface LevelConfig {
   unlockScore?: number;
 }
 
+export type ReviewCategory =
+  | 'accuracy'
+  | 'overweight_speed'
+  | 'gate_change'
+  | 'boarding'
+  | 'time_management'
+  | 'mistake_reduction';
+
+export interface ReviewSuggestion {
+  id: string;
+  category: ReviewCategory;
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  icon: string;
+}
+
+export interface ReviewSummary {
+  levelId: string;
+  score: number;
+  grade: Grade;
+  timestamp: number;
+  suggestions: ReviewSuggestion[];
+  topWeakness: string;
+  topImprovement: string;
+  keyStats: {
+    accuracyRate: number;
+    avgOverweightSpeed: number;
+    gateChangeConfirmRate: number;
+    boardingCompleteRate: number;
+    mistakeCount: number;
+    remainingTime: number;
+  };
+}
+
 export interface HighScoreRecord {
   levelId: string;
   score: number;
@@ -165,6 +200,7 @@ export interface HighScoreRecord {
     confirmCount: number;
     unconfirmedCount: number;
   };
+  lastReview?: ReviewSummary;
 }
 
 export interface GameSettings {
@@ -178,4 +214,5 @@ export const STORAGE_KEYS = {
   UNLOCKED_LEVELS: 'baggage_sort_unlocked_levels',
   GAME_SETTINGS: 'baggage_sort_settings',
   LAST_RESULT: 'baggage_sort_last_result',
+  LAST_REVIEW: 'baggage_sort_last_review',
 };

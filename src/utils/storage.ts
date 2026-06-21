@@ -1,6 +1,7 @@
-import type { HighScoreRecord, GameResult, GameSettings, STORAGE_KEYS as SK } from '../types';
+import type { HighScoreRecord, GameResult, GameSettings, ReviewSummary } from '../types';
 import { STORAGE_KEYS } from '../types';
 import { LEVELS } from '../data/levels';
+import { generateReviewSummary } from './review';
 
 const safeGet = <T>(key: string, defaultValue: T): T => {
   try {
@@ -36,6 +37,8 @@ export const saveHighScore = (result: GameResult): HighScoreRecord | null => {
   const confirmCount = result.gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
   const unconfirmedCount = result.gateChangeHandles.reduce((sum, h) => sum + h.unconfirmedMistakes, 0);
 
+  const review = generateReviewSummary(result);
+
   const newRecord: HighScoreRecord = {
     levelId: result.levelId,
     score: result.totalScore,
@@ -46,18 +49,27 @@ export const saveHighScore = (result: GameResult): HighScoreRecord | null => {
       confirmCount,
       unconfirmedCount,
     } : undefined,
+    lastReview: review,
   };
 
   if (existingIdx >= 0) {
-    if (scores[existingIdx].score < result.totalScore) {
+    const existingRecord = scores[existingIdx];
+    if (existingRecord.score < result.totalScore) {
       scores[existingIdx] = newRecord;
       safeSet(STORAGE_KEYS.HIGH_SCORES, scores);
+      saveLastReview(review);
       return newRecord;
+    } else {
+      existingRecord.lastReview = review;
+      scores[existingIdx] = existingRecord;
+      safeSet(STORAGE_KEYS.HIGH_SCORES, scores);
+      saveLastReview(review);
+      return null;
     }
-    return null;
   } else {
     scores.push(newRecord);
     safeSet(STORAGE_KEYS.HIGH_SCORES, scores);
+    saveLastReview(review);
     return newRecord;
   }
 };
@@ -104,4 +116,17 @@ export const saveLastResult = (result: GameResult): void => {
 
 export const getLastResult = (): GameResult | null => {
   return safeGet<GameResult | null>(STORAGE_KEYS.LAST_RESULT, null);
+};
+
+export const saveLastReview = (review: ReviewSummary): void => {
+  safeSet(STORAGE_KEYS.LAST_REVIEW, review);
+};
+
+export const getLastReview = (): ReviewSummary | null => {
+  return safeGet<ReviewSummary | null>(STORAGE_KEYS.LAST_REVIEW, null);
+};
+
+export const getReviewByLevel = (levelId: string): ReviewSummary | undefined => {
+  const record = getHighScoreByLevel(levelId);
+  return record?.lastReview;
 };

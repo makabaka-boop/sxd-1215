@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Star, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trophy, Star, RefreshCw, TrendingUp, Eye } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { getHighScoreByLevel } from '../utils/storage';
 import GradeBadge from '../components/GradeBadge';
+import ReviewSummaryModal from '../components/ReviewSummaryModal';
 import { useState, useCallback } from 'react';
+import type { ReviewSummary } from '../types';
 
 function formatNumber(num: number): string {
   return num.toLocaleString('zh-CN');
@@ -44,9 +46,20 @@ function getDifficultyColor(level: number): string {
 export default function HighScores() {
   const navigate = useNavigate();
   const [reloadKey, setReloadKey] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<ReviewSummary | null>(null);
+  const [selectedLevelName, setSelectedLevelName] = useState<string>('');
 
   const handleReload = useCallback(() => {
     setReloadKey((k) => k + 1);
+  }, []);
+
+  const handleViewReview = useCallback((review: ReviewSummary | undefined, levelName: string) => {
+    if (review) {
+      setSelectedReview(review);
+      setSelectedLevelName(levelName);
+      setModalOpen(true);
+    }
   }, []);
 
   return (
@@ -82,13 +95,15 @@ export default function HighScores() {
             <div className="col-span-2 text-slate-400 text-sm font-semibold text-right">分数</div>
             <div className="col-span-1 text-slate-400 text-sm font-semibold text-center">评级</div>
             <div className="col-span-2 text-slate-400 text-sm font-semibold text-center">登机口变更</div>
-            <div className="col-span-2 text-slate-400 text-sm font-semibold text-right">达成时间</div>
+            <div className="col-span-1 text-slate-400 text-sm font-semibold text-center">复盘</div>
+            <div className="col-span-1 text-slate-400 text-sm font-semibold text-right">达成时间</div>
           </div>
 
           <div className="divide-y divide-white/5" key={reloadKey}>
             {LEVELS.map((level, idx) => {
               const record = getHighScoreByLevel(level.id);
               const isGradeS = record?.grade === 'S';
+              const hasReview = record?.lastReview !== undefined;
 
               return (
                 <div
@@ -153,7 +168,21 @@ export default function HighScores() {
                     )}
                   </div>
 
-                  <div className="md:col-span-2 md:text-right">
+                  <div className="md:col-span-1 flex md:justify-center">
+                    {hasReview ? (
+                      <button
+                        onClick={() => handleViewReview(record?.lastReview, level.name)}
+                        className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/60 transition-all text-xs font-semibold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">查看</span>
+                      </button>
+                    ) : (
+                      <span className="text-slate-600 text-xs font-mono">-</span>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-1 md:text-right">
                     {record ? (
                       <span className="text-xs text-slate-400 font-mono">
                         {formatDate(record.timestamp)}
@@ -167,6 +196,13 @@ export default function HighScores() {
             })}
           </div>
         </div>
+
+        <ReviewSummaryModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          review={selectedReview}
+          levelName={selectedLevelName}
+        />
 
         <div className="mt-8 flex justify-center">
           <button

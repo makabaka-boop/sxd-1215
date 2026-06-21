@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { getLastResult, getHighScoreByLevel, saveHighScore, isLevelUnlocked } from '../utils/storage';
+import { getLastResult, getHighScoreByLevel, saveHighScore, isLevelUnlocked, getLastReview } from '../utils/storage';
 import GradeBadge from '../components/GradeBadge';
 import ScoreCard from '../components/ScoreCard';
 import MistakeTimeline from '../components/MistakeTimeline';
-import { ArrowLeft, RotateCcw, Layers, Home, Target, Gauge, PlaneTakeoff, AlertCircle, Timer, TrendingUp, Award, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Layers, Home, Target, Gauge, PlaneTakeoff, AlertCircle, Timer, TrendingUp, Award, ArrowLeftRight, Lightbulb, AlertTriangle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { generateReviewSuggestions, getPriorityColor, getPriorityBgColor, getPriorityDotColor } from '../utils/review';
+import type { ReviewSuggestion, ReviewCategory } from '../types';
 
 function formatNumber(num: number): string {
   return num.toLocaleString('zh-CN');
@@ -34,6 +36,51 @@ function AnimatedScore({ value }: { value: number }) {
   return <motion.span>{display}</motion.span>;
 }
 
+const suggestionIcons: Record<ReviewCategory, React.ReactNode> = {
+  accuracy: <Target className="w-4 h-4" />,
+  overweight_speed: <Gauge className="w-4 h-4" />,
+  gate_change: <ArrowLeftRight className="w-4 h-4" />,
+  boarding: <PlaneTakeoff className="w-4 h-4" />,
+  time_management: <Timer className="w-4 h-4" />,
+  mistake_reduction: <AlertCircle className="w-4 h-4" />,
+};
+
+function SuggestionItem({ suggestion, index }: { suggestion: ReviewSuggestion; index: number }) {
+  const priorityColor = getPriorityColor(suggestion.priority);
+  const priorityBg = getPriorityBgColor(suggestion.priority);
+  const priorityDot = getPriorityDotColor(suggestion.priority);
+  const icon = suggestionIcons[suggestion.category];
+
+  return (
+    <motion.div
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ delay: index * 0.08, type: 'spring', stiffness: 200, damping: 25 }}
+      className="relative flex items-start gap-3 pl-6 py-2"
+    >
+      <div className="absolute left-0 top-3 w-3 h-3 rounded-full -translate-x-0.5 ring-2 ring-slate-800 z-10">
+        <div className={`w-full h-full rounded-full ${priorityDot}`} />
+      </div>
+      <div className={`flex-shrink-0 mt-0.5 ${priorityColor}`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`font-display font-bold text-sm ${priorityColor}`}>
+            {suggestion.title}
+          </span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${priorityBg} ${priorityColor} font-semibold`}>
+            {suggestion.priority === 'high' ? '高优先' : suggestion.priority === 'medium' ? '中优先' : '低优先'}
+          </span>
+        </div>
+        <p className="text-sm text-slate-300">
+          {suggestion.description}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function ResultPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
@@ -43,6 +90,16 @@ export default function ResultPage() {
   const [prevHighScore, setPrevHighScore] = useState<number | null>(null);
 
   const result = storeResult || getLastResult();
+
+  const suggestions = useMemo(() => {
+    if (!result) return [];
+    return generateReviewSuggestions(result);
+  }, [result]);
+
+  const reviewSummary = useMemo(() => {
+    if (!result) return null;
+    return getLastReview();
+  }, [result]);
 
   useEffect(() => {
     if (result && levelId) {
@@ -234,6 +291,54 @@ export default function ResultPage() {
             </span>
           </div>
           <MistakeTimeline mistakes={mistakes} maxItems={15} />
+        </div>
+
+        {reviewSummary && (
+          <div className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <span className="text-sm font-semibold text-red-400">主要失分点</span>
+                </div>
+                <p className="text-xl font-display font-bold text-white">{reviewSummary.topWeakness}</p>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <span className="text-sm font-semibold text-emerald-400">优先提升方向</span>
+                </div>
+                <p className="text-xl font-display font-bold text-white">{reviewSummary.topImprovement}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Lightbulb className="w-5 h-5 text-amber-400" />
+            <h3 className="font-display text-xl font-bold text-white">赛后改进建议</h3>
+            <span className="ml-auto px-2.5 py-1 rounded-full bg-white/10 text-slate-300 text-sm font-mono">
+              {suggestions.length} 条
+            </span>
+          </div>
+          {suggestions.length > 0 ? (
+            <div className="bg-white/5 rounded-xl p-4 backdrop-blur border border-white/10">
+              <div className="space-y-1">
+                {suggestions.map((suggestion, index) => (
+                  <SuggestionItem key={suggestion.id} suggestion={suggestion} index={index} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/5 rounded-xl p-6 backdrop-blur border border-white/10 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <TrendingUp className="w-8 h-8 text-emerald-400" />
+              </div>
+              <p className="text-emerald-400 font-display font-bold text-lg">表现优秀！</p>
+              <p className="text-slate-400 text-sm mt-1">本局没有明显短板，继续保持</p>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
