@@ -86,6 +86,8 @@ export const createBaggage = (
     priority,
     passengerName: randomItem(PASSENGER_NAMES),
     isSecurityChecked,
+    securityRecheckAttempts: 0,
+    lastSecurityFailed: false,
     createdAt: currentTime,
     expiresAt: currentTime + level.baggageExpireTime,
     status: 'pending',

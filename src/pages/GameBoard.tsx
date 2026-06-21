@@ -171,18 +171,18 @@ export default function GameBoard() {
         </AnimatePresence>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 pt-28 pb-32 h-screen">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6 h-full">
-          <div className="flex flex-col min-h-0">
-            <div className="flex items-center gap-2 mb-4">
-              <Layers className="w-5 h-5 text-slate-400" />
-              <h2 className="font-display text-xl font-bold text-white">待分拣行李</h2>
-              <span className="ml-auto px-2.5 py-1 rounded-full bg-white/10 text-slate-300 text-sm font-mono">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pt-24 sm:pt-28 pb-40 sm:pb-32 h-screen">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-4 sm:gap-6 h-full">
+          <div className="flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+              <h2 className="font-display text-lg sm:text-xl font-bold text-white">待分拣行李</h2>
+              <span className="ml-auto px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-white/10 text-slate-300 text-xs sm:text-sm font-mono">
                 {pendingBaggages.length}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
-              <div className="flex flex-wrap gap-3 content-start">
+            <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3 content-start">
                 {pendingBaggages.map((baggage) => (
                   <BaggageCard
                     key={baggage.id}
@@ -196,15 +196,15 @@ export default function GameBoard() {
                 ))}
               </div>
               {pendingBaggages.length === 0 && (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-8 sm:py-12 text-slate-500">
                   <div className="text-sm">等待行李到达...</div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col min-h-0">
-            <div className="grid grid-cols-4 gap-4 h-full">
+          <div className="flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 h-full overflow-x-auto lg:overflow-visible">
               {channels.map((channel) => {
                 const flight = level?.flights.find((f) => f.id === channel.flightId);
                 return (
@@ -235,7 +235,7 @@ export default function GameBoard() {
               </span>
             </div>
             <div className="text-xs text-slate-500 hidden sm:block">
-              快捷键：Tab切换行李 · 数字键分拣 · 空格确认 · Esc暂停
+              快捷键：Tab切换行李 · 先选中再按数字键分拣 · 空格确认 · Esc暂停/恢复
             </div>
           </div>
           <button

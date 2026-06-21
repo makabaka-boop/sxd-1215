@@ -217,7 +217,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     let newBaggages = [...s.baggages];
     let newChannels = [...s.channels];
     let newActiveEvents = [...s.activeEvents];
-    let newPastEvents = [...s.pastEvents];
+    const newPastEvents = [...s.pastEvents];
     let newToasts = [...s.toasts];
     const newScoreState = { ...s.scoreState };
     const newEventTriggerState = { ...s.eventTriggerState, lastTriggered: { ...s.eventTriggerState.lastTriggered } };
@@ -509,11 +509,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (sortedCount > 0) {
       const bonusPerPiece = 3;
       const totalBonus = sortedCount * bonusPerPiece;
+      const confirmedIds = new Set(sortedBaggages.map(b => b.id));
+      const confirmedBaggageRecords = sortedBaggages.map(b => ({ ...b, status: 'confirmed' as const }));
       const newScoreState = {
         ...s.scoreState,
         baseScore: s.scoreState.baseScore + totalBonus,
+        confirmedSortedCount: s.scoreState.confirmedSortedCount + sortedCount,
+        confirmedBaggages: [...s.scoreState.confirmedBaggages, ...confirmedBaggageRecords],
       };
-      const confirmedIds = new Set(sortedBaggages.map(b => b.id));
       const newBaggages = s.baggages.filter(b => !confirmedIds.has(b.id));
       const newChannels = s.channels.map(ch => ({
         ...ch,
@@ -572,13 +575,38 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (!baggage || baggage.isSecurityChecked) return;
 
     const passed = Math.random() > 0.2;
+    const newAttempts = baggage.securityRecheckAttempts + 1;
     const newBaggages = s.baggages.map(b =>
-      b.id === baggageId ? { ...b, isSecurityChecked: passed } : b
+      b.id === baggageId
+        ? {
+            ...b,
+            isSecurityChecked: passed,
+            securityRecheckAttempts: newAttempts,
+            lastSecurityFailed: !passed,
+          }
+        : b
     );
 
-    const newToasts = passed
-      ? addToast(s.toasts, 'success', `安检复核通过 ✓`)
-      : addToast(s.toasts, 'error', `安检复核未通过，需重新处理`);
+    let newToasts = s.toasts;
+    if (passed) {
+      newToasts = addToast(
+        s.toasts,
+        'success',
+        `安检复核通过 ✓ (第${newAttempts}次)`
+      );
+    } else {
+      const failHint =
+        newAttempts >= 3
+          ? `连续${newAttempts}次未通过，继续重试`
+          : newAttempts === 2
+          ? '再次未通过，请再次尝试'
+          : '未通过，需重新处理';
+      newToasts = addToast(
+        s.toasts,
+        'error',
+        `安检复核(${newAttempts}/?)：${failHint}`
+      );
+    }
 
     set({ baggages: newBaggages, toasts: newToasts });
   },

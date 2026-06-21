@@ -16,7 +16,7 @@ export type MistakeType =
   | 'baggage_expired'
   | 'gate_change_unconfirmed';
 
-export type BaggageStatus = 'pending' | 'processing' | 'sorted' | 'missed' | 'rejected';
+export type BaggageStatus = 'pending' | 'processing' | 'sorted' | 'confirmed' | 'missed' | 'rejected';
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D';
 
@@ -35,6 +35,8 @@ export interface Baggage {
   priority: PriorityLevel;
   passengerName: string;
   isSecurityChecked: boolean;
+  securityRecheckAttempts: number;
+  lastSecurityFailed: boolean;
   createdAt: number;
   expiresAt: number;
   assignedChannelId?: string;

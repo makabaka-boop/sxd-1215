@@ -20,15 +20,6 @@ const categoryIcons: Record<ReviewCategory, React.ReactNode> = {
   mistake_reduction: <AlertCircle className="w-4 h-4" />,
 };
 
-const categoryLabels: Record<ReviewCategory, string> = {
-  accuracy: '分拣准确率',
-  overweight_speed: '超重处理',
-  gate_change: '登机口变更',
-  boarding: '截载响应',
-  time_management: '时间管理',
-  mistake_reduction: '失误控制',
-};
-
 function formatNumber(num: number): string {
   return num.toLocaleString('zh-CN');
 }

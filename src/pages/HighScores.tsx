@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Star, RefreshCw, TrendingUp, Eye } from 'lucide-react';
+import { ArrowLeft, Trophy, Star, RefreshCw, Eye } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { getHighScoreByLevel } from '../utils/storage';
 import GradeBadge from '../components/GradeBadge';
@@ -108,88 +108,167 @@ export default function HighScores() {
               return (
                 <div
                   key={level.id}
-                  className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5 items-center transition-colors ${isGradeS ? 'bg-amber-500/10' : 'hover:bg-white/5'}`}
+                  className={`transition-colors ${isGradeS ? 'bg-amber-500/10' : 'hover:bg-white/5'}`}
                   style={{ animationDelay: `${idx * 50}ms` }}
                 >
-                  <div className="md:col-span-3 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <Star className={`w-5 h-5 ${isGradeS ? 'text-amber-400' : 'text-slate-400'}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className={`font-display font-bold text-lg truncate ${isGradeS ? 'text-amber-200' : 'text-white'}`}>
-                        {level.name}
+                  <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-5 items-center">
+                    <div className="col-span-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <Star className={`w-5 h-5 ${isGradeS ? 'text-amber-400' : 'text-slate-400'}`} />
                       </div>
-                      <div className="text-xs text-slate-500 md:hidden">{getDifficultyLabel(level.difficulty)}</div>
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2 hidden md:block">
-                    <span className={`font-semibold ${getDifficultyColor(level.difficulty)}`}>
-                      {getDifficultyLabel(level.difficulty)}
-                    </span>
-                  </div>
-
-                  <div className="md:col-span-2 md:text-right">
-                    {record ? (
-                      <span className={`font-mono font-black text-2xl ${isGradeS ? 'text-amber-400' : 'text-white'}`}>
-                        {formatNumber(record.score)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-600 font-mono text-2xl">—</span>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-1 flex md:justify-center">
-                    {record ? (
-                      <GradeBadge grade={record.grade} size="sm" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center text-slate-600 font-display font-bold text-xl">
-                        -
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2 flex md:justify-center">
-                    {record?.gateChangeStats ? (
-                      <div className="text-center">
-                        <div className="text-xs font-mono text-slate-300">
-                          <span className="text-emerald-400">{record.gateChangeStats.confirmCount}</span>
-                          <span className="text-slate-500">/</span>
-                          <span className="text-slate-400">{record.gateChangeStats.triggerCount}</span>
+                      <div className="min-w-0">
+                        <div className={`font-display font-bold text-lg truncate ${isGradeS ? 'text-amber-200' : 'text-white'}`}>
+                          {level.name}
                         </div>
-                        {record.gateChangeStats.unconfirmedCount > 0 && (
-                          <div className="text-[10px] text-red-400">
-                            漏确认 {record.gateChangeStats.unconfirmedCount}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <span className={`font-semibold ${getDifficultyColor(level.difficulty)}`}>
+                        {getDifficultyLabel(level.difficulty)}
+                      </span>
+                    </div>
+
+                    <div className="col-span-2 text-right">
+                      {record ? (
+                        <span className={`font-mono font-black text-2xl ${isGradeS ? 'text-amber-400' : 'text-white'}`}>
+                          {formatNumber(record.score)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 font-mono text-2xl">—</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-1 flex justify-center">
+                      {record ? (
+                        <GradeBadge grade={record.grade} size="sm" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center text-slate-600 font-display font-bold text-xl">
+                          -
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="col-span-2 flex justify-center">
+                      {record?.gateChangeStats ? (
+                        <div className="text-center">
+                          <div className="text-xs font-mono text-slate-300">
+                            <span className="text-emerald-400">{record.gateChangeStats.confirmCount}</span>
+                            <span className="text-slate-500">/</span>
+                            <span className="text-slate-400">{record.gateChangeStats.triggerCount}</span>
                           </div>
+                          {record.gateChangeStats.unconfirmedCount > 0 && (
+                            <div className="text-[10px] text-red-400">
+                              漏确认 {record.gateChangeStats.unconfirmedCount}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-600 text-xs font-mono">-</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-1 flex justify-center">
+                      {hasReview ? (
+                        <button
+                          onClick={() => handleViewReview(record?.lastReview, level.name)}
+                          className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/60 transition-all text-xs font-semibold"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>查看</span>
+                        </button>
+                      ) : (
+                        <span className="text-slate-600 text-xs font-mono">-</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-1 text-right">
+                      {record ? (
+                        <span className="text-xs text-slate-400 font-mono">
+                          {formatDate(record.timestamp)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-xs font-mono">-</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="md:hidden px-4 py-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <Star className={`w-5 h-5 ${isGradeS ? 'text-amber-400' : 'text-slate-400'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-display font-bold text-lg truncate ${isGradeS ? 'text-amber-200' : 'text-white'}`}>
+                          {level.name}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs font-semibold ${getDifficultyColor(level.difficulty)}`}>
+                            {getDifficultyLabel(level.difficulty)}
+                          </span>
+                          {record && (
+                            <span className="text-xs text-slate-500 font-mono">
+                              {formatDate(record.timestamp)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {record ? (
+                        <GradeBadge grade={record.grade} size="sm" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-slate-800/50 flex items-center justify-center text-slate-600 font-display font-bold text-sm">
+                          -
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between px-1">
+                      <div className="text-slate-400 text-xs">分数</div>
+                      {record ? (
+                        <span className={`font-mono font-black text-2xl ${isGradeS ? 'text-amber-400' : 'text-white'}`}>
+                          {formatNumber(record.score)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 font-mono text-xl">—</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white/5 rounded-xl px-3 py-2">
+                        <div className="text-[10px] text-slate-500 mb-1">登机口变更</div>
+                        {record?.gateChangeStats ? (
+                          <div>
+                            <div className="text-sm font-mono text-slate-300">
+                              <span className="text-emerald-400">{record.gateChangeStats.confirmCount}</span>
+                              <span className="text-slate-500">/</span>
+                              <span className="text-slate-400">{record.gateChangeStats.triggerCount}</span>
+                            </div>
+                            {record.gateChangeStats.unconfirmedCount > 0 && (
+                              <div className="text-[10px] text-red-400">
+                                漏确认 {record.gateChangeStats.unconfirmedCount}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono">-</span>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-slate-600 text-xs font-mono">-</span>
-                    )}
-                  </div>
 
-                  <div className="md:col-span-1 flex md:justify-center">
-                    {hasReview ? (
-                      <button
-                        onClick={() => handleViewReview(record?.lastReview, level.name)}
-                        className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/60 transition-all text-xs font-semibold"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">查看</span>
-                      </button>
-                    ) : (
-                      <span className="text-slate-600 text-xs font-mono">-</span>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-1 md:text-right">
-                    {record ? (
-                      <span className="text-xs text-slate-400 font-mono">
-                        {formatDate(record.timestamp)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-600 text-xs font-mono">-</span>
-                    )}
+                      <div className="bg-white/5 rounded-xl px-3 py-2">
+                        <div className="text-[10px] text-slate-500 mb-1">复盘分析</div>
+                        {hasReview ? (
+                          <button
+                            onClick={() => handleViewReview(record?.lastReview, level.name)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30 transition-all text-xs font-semibold"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>查看复盘</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono">暂无记录</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

@@ -22,10 +22,10 @@ const events = [
 ];
 
 const shortcuts = [
-  { key: '1-4', desc: '分拣选中行李至对应通道（1-4号）' },
   { key: 'Tab / ⇧Tab', desc: '切换选中下一件 / 上一件行李' },
+  { key: '1-4', desc: '将【已选中】的行李分拣至对应 1-4 号通道' },
   { key: '空格', desc: '批量确认已完成分拣的行李' },
-  { key: 'ESC', desc: '暂停当前游戏' },
+  { key: 'ESC', desc: '暂停游戏 / 恢复游戏（可反复切换）' },
 ];
 
 export default function Tutorial() {

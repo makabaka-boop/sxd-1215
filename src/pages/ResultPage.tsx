@@ -89,7 +89,9 @@ export default function ResultPage() {
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [prevHighScore, setPrevHighScore] = useState<number | null>(null);
 
-  const result = storeResult || getLastResult();
+  const rawLastResult = getLastResult();
+  const matchedLastResult = rawLastResult && levelId && rawLastResult.levelId === levelId ? rawLastResult : null;
+  const result = storeResult || matchedLastResult;
 
   const suggestions = useMemo(() => {
     if (!result) return [];
@@ -140,8 +142,6 @@ export default function ResultPage() {
   const gateChangeTriggerCount = gateChangeHandles.length;
   const gateChangeConfirmCount = gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
   const gateChangeUnconfirmCount = gateChangeHandles.reduce((sum, h) => sum + h.unconfirmedMistakes, 0);
-  const gateChangeConfirmRate = gateChangeTriggerCount > 0 ? Math.round((gateChangeConfirmCount / gateChangeTriggerCount) * 100) : 100;
-  const avgGateChangeSpeed = breakdown.gateChange.avgSpeed;
 
   const isBeaten = prevHighScore !== null && totalScore > prevHighScore;
 

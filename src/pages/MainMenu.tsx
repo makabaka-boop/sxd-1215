@@ -167,7 +167,7 @@ export default function MainMenu() {
           transition={{ delay: 0.5 }}
           className="mt-10 text-center text-sm text-slate-500 font-mono"
         >
-          快捷键: 1-4 分拣 · Tab 选中 · ESC 暂停
+          快捷键: Tab先选中行李 · 1-4分拣 · ESC暂停/恢复 · 空格确认
         </motion.div>
       </div>
     </div>

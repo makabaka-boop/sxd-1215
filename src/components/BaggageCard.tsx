@@ -35,6 +35,8 @@ export default function BaggageCard({
   const isExpiring = expirePercent < 30;
   const isOverweight = baggage.weightLevel === 'overweight';
   const needsSecurity = !baggage.isSecurityChecked;
+  const securityAttempts = baggage.securityRecheckAttempts || 0;
+  const hasSecurityFailStreak = baggage.lastSecurityFailed && securityAttempts > 0;
 
   const flightChannel = channels.find((ch) => ch.flightId === baggage.flightId);
   const gateChangeUnconfirmed = flightChannel?.changedGate && !flightChannel.gateChangeConfirmed;
@@ -137,16 +139,37 @@ export default function BaggageCard({
       )}
 
       {needsSecurity && onSecurityRecheck && baggage.status === 'pending' && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSecurityRecheck(baggage.id);
-          }}
-          className="w-full mt-1 py-1 px-2 bg-orange-500/80 hover:bg-orange-500 text-white text-[11px] rounded-md flex items-center justify-center gap-1 transition-colors"
-        >
-          <ShieldAlert className="w-3 h-3" />
-          安检复核
-        </button>
+        <>
+          {hasSecurityFailStreak && (
+            <div className={cn(
+              'mt-1 px-2 py-0.5 rounded text-[10px] font-semibold text-center',
+              securityAttempts >= 3
+                ? 'bg-red-500/20 border border-red-500/40 text-red-400'
+                : 'bg-orange-500/20 border border-orange-500/40 text-orange-400'
+            )}>
+              已尝试 {securityAttempts} 次{securityAttempts >= 3 && '，请耐心重试'}
+            </div>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSecurityRecheck(baggage.id);
+            }}
+            className={cn(
+              'w-full mt-1 py-1 px-2 text-white text-[11px] rounded-md flex items-center justify-center gap-1 transition-colors',
+              hasSecurityFailStreak && securityAttempts >= 3
+                ? 'bg-red-500/80 hover:bg-red-500 animate-pulse'
+                : hasSecurityFailStreak
+                ? 'bg-orange-500/80 hover:bg-orange-500'
+                : 'bg-orange-500/80 hover:bg-orange-500'
+            )}
+          >
+            <ShieldAlert className="w-3 h-3" />
+            {securityAttempts > 0
+              ? `重新安检 (${securityAttempts})`
+              : '安检复核'}
+          </button>
+        </>
       )}
     </div>
   );

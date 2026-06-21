@@ -152,6 +152,8 @@ export interface ScoreState {
   correctCount: number;
   wrongCount: number;
   totalSorted: number;
+  confirmedSortedCount: number;
+  confirmedBaggages: Baggage[];
   overweightHandles: OverweightHandle[];
   boardingCompletions: BoardingCompletion[];
   gateChangeHandles: GateChangeHandle[];
@@ -164,6 +166,8 @@ export const createScoreState = (): ScoreState => ({
   correctCount: 0,
   wrongCount: 0,
   totalSorted: 0,
+  confirmedSortedCount: 0,
+  confirmedBaggages: [],
   overweightHandles: [],
   boardingCompletions: [],
   gateChangeHandles: [],
@@ -214,7 +218,7 @@ export const calculateBreakdown = (
     playTimeMs: number;
   }
 ): ScoreBreakdown => {
-  const total = Math.max(1, gameResult.totalBaggage);
+  void gameResult.totalBaggage;
 
   const accuracyMax = 400;
   const accuracyRate = scoreState.totalSorted > 0
@@ -299,15 +303,16 @@ export const computeFinalResult = (
     playTimeMs: number;
   }
 ): GameResult => {
-  const sortedBaggage = gameState.baggages.filter(b => b.status === 'sorted').length;
+  const activeSorted = gameState.baggages.filter(b => b.status === 'sorted');
+  const confirmedSorted = scoreState.confirmedBaggages;
+  const allSorted = [...activeSorted, ...confirmedSorted];
+  const sortedBaggage = allSorted.length;
 
   let baseTotal = 0;
-  for (const b of gameState.baggages) {
-    if (b.status === 'sorted') {
-      baseTotal += SCORE_BASE.base_sorted;
-      if (b.priority === 'vip') baseTotal += SCORE_BASE.vip_bonus;
-      else if (b.priority === 'express') baseTotal += SCORE_BASE.express_bonus;
-    }
+  for (const b of allSorted) {
+    baseTotal += SCORE_BASE.base_sorted;
+    if (b.priority === 'vip') baseTotal += SCORE_BASE.vip_bonus;
+    else if (b.priority === 'express') baseTotal += SCORE_BASE.express_bonus;
   }
 
   for (const h of scoreState.overweightHandles) {
