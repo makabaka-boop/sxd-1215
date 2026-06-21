@@ -31,11 +31,21 @@ export const getHighScoreByLevel = (levelId: string): HighScoreRecord | undefine
 export const saveHighScore = (result: GameResult): HighScoreRecord | null => {
   const scores = getHighScores();
   const existingIdx = scores.findIndex(r => r.levelId === result.levelId);
+
+  const triggerCount = result.gateChangeHandles.length;
+  const confirmCount = result.gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
+  const unconfirmedCount = result.gateChangeHandles.filter(h => h.confirmedAt === undefined).length;
+
   const newRecord: HighScoreRecord = {
     levelId: result.levelId,
     score: result.totalScore,
     grade: result.grade,
     timestamp: result.timestamp,
+    gateChangeStats: triggerCount > 0 ? {
+      triggerCount,
+      confirmCount,
+      unconfirmedCount,
+    } : undefined,
   };
 
   if (existingIdx >= 0) {

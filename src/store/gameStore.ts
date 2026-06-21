@@ -16,6 +16,7 @@ import {
   createScoreState,
   addMistake,
   computeFinalResult,
+  selectFlightForEvent,
 } from '../utils/score';
 import { getLevelById } from '../data/levels';
 import { saveLastResult } from '../utils/storage';
@@ -85,6 +86,7 @@ interface GameStoreState {
 
   handleOverweight: (baggageId: string) => void;
   handleSecurityRecheck: (baggageId: string) => void;
+  handleGateChangeConfirm: (eventId: string) => void;
 
   dismissToast: (id: string) => void;
 }
@@ -249,17 +251,30 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const eventTypes: EventType[] = ['gate_change', 'overweight_alert', 'early_boarding', 'security_recheck'];
     for (const et of eventTypes) {
       if (shouldTriggerEvent(s.level, et, newGameTimeSec, newEventTriggerState)) {
-        const evt = createEvent(et, newGameTimeMs, s.level.flights, newChannels);
+        let flightPool = s.level.flights;
+        if (et === 'gate_change') {
+          const selectedFlight = selectFlightForEvent(s.level, et, newChannels);
+          if (!selectedFlight) continue;
+          flightPool = [selectedFlight];
+        }
+        const evt = createEvent(et, newGameTimeMs, flightPool, newChannels);
         newActiveEvents.push(evt);
         newEventTriggerState.lastTriggered[et] = newGameTimeSec;
         newToasts = addToast(newToasts, 'warning', `⚠ ${evt.title}`);
 
-        if (et === 'gate_change' && evt.relatedFlightId) {
-          const newGates = ['C03', 'D07', 'A15', 'B22', 'E09', 'F18'];
-          const newGate = newGates[Math.floor(Math.random() * newGates.length)];
+        if (et === 'gate_change' && evt.relatedFlightId && evt.newGate && evt.oldGate) {
           newChannels = newChannels.map(ch =>
-            ch.flightId === evt.relatedFlightId ? { ...ch, changedGate: newGate } : ch
+            ch.flightId === evt.relatedFlightId
+              ? { ...ch, changedGate: evt.newGate, gateChangeConfirmed: false, gateChangeEventId: evt.id }
+              : ch
           );
+          newScoreState.gateChangeHandles.push({
+            eventId: evt.id,
+            flightId: evt.relatedFlightId,
+            oldGate: evt.oldGate,
+            newGate: evt.newGate,
+            unconfirmedMistakes: 0,
+          });
         }
 
         if (et === 'early_boarding' && evt.relatedFlightId) {
@@ -354,7 +369,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const gameTimeSec = s.gameTimeMs / 1000;
     let newToasts = [...s.toasts];
-    const newScoreState = { ...s.scoreState };
+    const newScoreState = {
+      ...s.scoreState,
+      gateChangeHandles: [...s.scoreState.gateChangeHandles],
+      mistakes: [...s.scoreState.mistakes],
+    };
     const newBaggages = [...s.baggages];
     const newChannels = [...s.channels];
 
@@ -362,8 +381,35 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const isOverweight = baggage.weightLevel === 'overweight';
     const isSecurityOk = baggage.isSecurityChecked;
 
+    const baggageFlightChannel = newChannels.find(ch => ch.flightId === baggage.flightId);
+    const gateChangeUnconfirmed = baggageFlightChannel?.changedGate && !baggageFlightChannel.gateChangeConfirmed;
+
     let sortedSuccessfully = false;
     let hasError = false;
+
+    if (gateChangeUnconfirmed && isCorrectFlight) {
+      hasError = true;
+      addMistake(
+        newScoreState,
+        'gate_change_unconfirmed',
+        `航班${s.level.flights.find(f => f.id === baggage.flightId)?.flightNo || ''}登机口已变更，分拣前请先确认新登机口`,
+        35,
+        gameTimeSec,
+        baggage.id,
+        baggage.flightId
+      );
+      newToasts = addToast(newToasts, 'error', `登机口未确认 -35`);
+
+      if (baggageFlightChannel?.gateChangeEventId) {
+        const handleIdx = newScoreState.gateChangeHandles.findIndex(h => h.eventId === baggageFlightChannel.gateChangeEventId);
+        if (handleIdx >= 0) {
+          newScoreState.gateChangeHandles[handleIdx] = {
+            ...newScoreState.gateChangeHandles[handleIdx],
+            unconfirmedMistakes: newScoreState.gateChangeHandles[handleIdx].unconfirmedMistakes + 1,
+          };
+        }
+      }
+    }
 
     if (!isSecurityOk) {
       hasError = true;
@@ -535,6 +581,58 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       : addToast(s.toasts, 'error', `安检复核未通过，需重新处理`);
 
     set({ baggages: newBaggages, toasts: newToasts });
+  },
+
+  handleGateChangeConfirm: (eventId: string) => {
+    const s = get();
+    if (s.status !== 'playing') return;
+
+    const event = s.activeEvents.find(e => e.id === eventId);
+    if (!event || event.type !== 'gate_change' || event.confirmed) return;
+
+    const gameTimeSec = s.gameTimeMs / 1000;
+    const reactionTime = s.gameTimeMs - event.triggerTime * 1000;
+
+    let bonus = 30;
+    if (reactionTime < 5000) bonus += 15;
+
+    const newScoreState = {
+      ...s.scoreState,
+      baseScore: s.scoreState.baseScore + bonus,
+      gateChangeHandles: s.scoreState.gateChangeHandles.map(h =>
+        h.eventId === eventId
+          ? { ...h, confirmedAt: s.gameTimeMs, reactionTime }
+          : h
+      ),
+    };
+
+    const newActiveEvents = s.activeEvents.map(e =>
+      e.id === eventId ? { ...e, confirmed: true, resolved: true } : e
+    );
+
+    const newChannels = s.channels.map(ch =>
+      ch.gateChangeEventId === eventId
+        ? { ...ch, gateChangeConfirmed: true }
+        : ch
+    );
+
+    const newPastEvents = [...s.pastEvents, ...newActiveEvents.filter(e => e.id === eventId && e.resolved)];
+    const filteredActiveEvents = newActiveEvents.filter(e => !(e.id === eventId && e.resolved));
+
+    const flight = s.level?.flights.find(f => f.id === event.relatedFlightId);
+    const newToasts = addToast(
+      s.toasts,
+      'success',
+      `登机口已确认 ${flight?.flightNo || ''}: ${event.oldGate} → ${event.newGate} +${bonus}`
+    );
+
+    set({
+      scoreState: newScoreState,
+      activeEvents: filteredActiveEvents,
+      pastEvents: newPastEvents,
+      channels: newChannels,
+      toasts: newToasts,
+    });
   },
 
   dismissToast: (id: string) => {

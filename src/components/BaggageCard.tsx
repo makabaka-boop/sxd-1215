@@ -1,7 +1,7 @@
 import type { Baggage } from '../types';
 import { getFlightColor } from '../data/levels';
 import { getWeightLevelColor, getPriorityLabel, getPriorityColor, getWeightLevelBgColor } from '../utils/baggage';
-import { AlertTriangle, ShieldAlert, GripVertical, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, GripVertical, Clock, CheckCircle, XCircle, ArrowLeftRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useGameStore } from '../store/gameStore';
 
@@ -24,6 +24,7 @@ export default function BaggageCard({
 }: BaggageCardProps) {
   const gameTimeMs = useGameStore((s) => s.gameTimeMs);
   const level = useGameStore((s) => s.level);
+  const channels = useGameStore((s) => s.channels);
 
   const flight = level?.flights.find((f) => f.id === baggage.flightId);
   const flightColor = getFlightColor(baggage.flightId);
@@ -34,6 +35,9 @@ export default function BaggageCard({
   const isExpiring = expirePercent < 30;
   const isOverweight = baggage.weightLevel === 'overweight';
   const needsSecurity = !baggage.isSecurityChecked;
+
+  const flightChannel = channels.find((ch) => ch.flightId === baggage.flightId);
+  const gateChangeUnconfirmed = flightChannel?.changedGate && !flightChannel.gateChangeConfirmed;
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('baggageId', baggage.id);
@@ -50,14 +54,33 @@ export default function BaggageCard({
         isSelected && 'border-2 shadow-glow-blue',
         baggage.status === 'sorted' && 'border-green-500 border-2',
         baggage.status === 'rejected' && 'animate-shake',
-        isExpiring && baggage.status === 'pending' && 'border-red-500/80 animate-pulse-fast'
+        isExpiring && baggage.status === 'pending' && 'border-red-500/80 animate-pulse-fast',
+        gateChangeUnconfirmed && baggage.status === 'pending' && 'border-orange-500/60 border-2'
       )}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className={cn('text-lg font-bold font-display', flightColor.text)}>
-          {flight?.flightNo || '----'}
+        <div className="flex-1 min-w-0">
+          <div className={cn('text-lg font-bold font-display truncate', flightColor.text)}>
+            {flight?.flightNo || '----'}
+          </div>
+          {gateChangeUnconfirmed && (
+            <div className="flex items-center gap-1 mt-1">
+              <ArrowLeftRight className="w-3 h-3 text-orange-400" />
+              <span className="text-[10px] font-medium text-orange-400">
+                {flight?.gate} → {flightChannel?.changedGate} (待确认)
+              </span>
+            </div>
+          )}
+          {flightChannel?.changedGate && flightChannel.gateChangeConfirmed && (
+            <div className="flex items-center gap-1 mt-1">
+              <CheckCircle className="w-3 h-3 text-emerald-400" />
+              <span className="text-[10px] font-medium text-emerald-400">
+                新登机口: {flightChannel.changedGate}
+              </span>
+            </div>
+          )}
         </div>
-        <GripVertical className="w-4 h-4 text-slate-500" />
+        <GripVertical className="w-4 h-4 text-slate-500 flex-shrink-0 ml-2" />
       </div>
 
       <div className="flex items-center gap-1.5 mb-2">

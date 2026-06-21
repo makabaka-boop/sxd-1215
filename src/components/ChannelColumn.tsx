@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Channel, Flight } from '../types';
 import { getFlightColor } from '../data/levels';
 import { formatSec } from '../utils/baggage';
-import { Plane, MapPin, Package, Timer, ArrowRightLeft } from 'lucide-react';
+import { Plane, MapPin, Package, Timer, ArrowRightLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useGameStore } from '../store/gameStore';
@@ -66,7 +66,8 @@ export default function ChannelColumn({
       className={cn(
         'h-full rounded-2xl p-4 flex flex-col gap-3 border min-w-[200px] cursor-pointer transition-all duration-200',
         'backdrop-blur-md bg-white/5',
-        showHighlight && cn('border-2', flightColor.border, flightColor.glow)
+        showHighlight && cn('border-2', flightColor.border, flightColor.glow),
+        channel.changedGate && !channel.gateChangeConfirmed && 'border-orange-500/60 border-2'
       )}
     >
       <div className={cn('rounded-xl p-3', flightColor.bg)}>
@@ -84,13 +85,24 @@ export default function ChannelColumn({
 
       <div className="flex items-center justify-center gap-2 py-1">
         {channel.changedGate ? (
-          <>
+          <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-1">
               <span className="text-sm text-slate-500 line-through">{flight?.gate || '--'}</span>
               <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" />
               <span className="text-sm font-semibold text-orange-400">{channel.changedGate}</span>
             </div>
-          </>
+            {channel.gateChangeConfirmed ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20">
+                <CheckCircle className="w-3 h-3 text-emerald-400" />
+                <span className="text-[10px] font-medium text-emerald-400">已确认</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 animate-pulse">
+                <AlertTriangle className="w-3 h-3 text-orange-400" />
+                <span className="text-[10px] font-medium text-orange-400">待确认</span>
+              </div>
+            )}
+          </div>
         ) : (
           <span className="text-sm text-slate-400">登机口: {flight?.gate || '--'}</span>
         )}

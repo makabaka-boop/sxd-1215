@@ -10,6 +10,7 @@ import type {
   OverweightHandle,
   BoardingCompletion,
   Baggage,
+  GateChangeHandle,
 } from '../types';
 
 const generateId = (): string => Math.random().toString(36).slice(2, 11);
@@ -55,6 +56,34 @@ export const shouldTriggerEvent = (
   return Math.random() < eventConfig.probability * 0.02;
 };
 
+export const selectFlightForEvent = (
+  config: LevelConfig,
+  eventType: EventType,
+  channels: Channel[]
+): { id: string; flightNo: string; gate: string; destination: string } | null => {
+  const eventConfig = config.events.find(e => e.type === eventType);
+  if (!eventConfig || eventType !== 'gate_change') {
+    return config.flights.length > 0 ? config.flights[Math.floor(Math.random() * config.flights.length)] : null;
+  }
+
+  const activeUnconfirmed = channels.filter(
+    ch => ch.changedGate && !ch.gateChangeConfirmed
+  ).map(ch => ch.flightId);
+
+  let availableFlights = config.flights;
+
+  if (eventConfig.affectedFlights === 'all') {
+    availableFlights = config.flights.filter(f => !activeUnconfirmed.includes(f.id));
+  } else if (Array.isArray(eventConfig.affectedFlights)) {
+    availableFlights = config.flights.filter(
+      f => eventConfig.affectedFlights!.includes(f.id) && !activeUnconfirmed.includes(f.id)
+    );
+  }
+
+  if (availableFlights.length === 0) return null;
+  return availableFlights[Math.floor(Math.random() * availableFlights.length)];
+};
+
 export const createEvent = (
   type: EventType,
   gameTimeMs: number,
@@ -74,9 +103,24 @@ export const createEvent = (
     const newGates = ['C03', 'D07', 'A15', 'B22', 'E09', 'F18'];
     const newGate = newGates[Math.floor(Math.random() * newGates.length)];
     title = '登机口变更';
-    message = `航班${flight.flightNo}登机口由${flight.gate}变更为${newGate}！`;
+    message = `航班${flight.flightNo}登机口由${flight.gate}变更为${newGate}！请确认新登机口后再分拣。`;
     relatedFlightId = flight.id;
     void channels;
+    return {
+      id: generateId(),
+      type,
+      title,
+      message,
+      relatedFlightId,
+      relatedBaggageId,
+      triggerTime: gameTimeSec,
+      duration: duration / 1000,
+      resolved: false,
+      penalty: 20,
+      confirmed: false,
+      oldGate: flight.gate,
+      newGate,
+    };
   } else if (type === 'early_boarding' && flights.length > 0) {
     const flight = flights[Math.floor(Math.random() * flights.length)];
     title = '航班提前截载';
@@ -110,6 +154,7 @@ export interface ScoreState {
   totalSorted: number;
   overweightHandles: OverweightHandle[];
   boardingCompletions: BoardingCompletion[];
+  gateChangeHandles: GateChangeHandle[];
   mistakes: MistakeRecord[];
   baseScore: number;
   penaltyScore: number;
@@ -121,6 +166,7 @@ export const createScoreState = (): ScoreState => ({
   totalSorted: 0,
   overweightHandles: [],
   boardingCompletions: [],
+  gateChangeHandles: [],
   mistakes: [],
   baseScore: 0,
   penaltyScore: 0,
@@ -179,11 +225,11 @@ export const calculateBreakdown = (
   const overweightMax = 200;
   const overweightTotal = scoreState.overweightHandles.length;
   let overweightScore = 0;
-  let avgSpeed = 0;
+  let avgOverweightSpeed = 0;
   if (overweightTotal > 0) {
     const totalSpeed = scoreState.overweightHandles.reduce((sum, h) => sum + h.reactionTime, 0);
-    avgSpeed = totalSpeed / overweightTotal;
-    const speedFactor = Math.max(0, 1 - avgSpeed / 8000);
+    avgOverweightSpeed = totalSpeed / overweightTotal;
+    const speedFactor = Math.max(0, 1 - avgOverweightSpeed / 8000);
     overweightScore = Math.round(overweightMax * Math.min(1, (overweightTotal * 0.5 + speedFactor * 0.5)));
   }
 
@@ -196,6 +242,26 @@ export const calculateBreakdown = (
   }
   const boardingScore = boardingTotal > 0 ? Math.round(boardingMax * boardingRate) : boardingMax;
 
+  const gateChangeMax = 200;
+  const gateChangeTotal = scoreState.gateChangeHandles.length;
+  let gateChangeScore = 0;
+  let gateChangeConfirmRate = 0;
+  let avgGateChangeSpeed = 0;
+  if (gateChangeTotal > 0) {
+    const confirmed = scoreState.gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
+    gateChangeConfirmRate = confirmed / gateChangeTotal;
+    const confirmedHandles = scoreState.gateChangeHandles.filter(h => h.confirmedAt !== undefined && h.reactionTime !== undefined);
+    if (confirmedHandles.length > 0) {
+      const totalSpeed = confirmedHandles.reduce((sum, h) => sum + (h.reactionTime || 0), 0);
+      avgGateChangeSpeed = totalSpeed / confirmedHandles.length;
+    }
+    const speedFactor = Math.max(0, 1 - avgGateChangeSpeed / 10000);
+    gateChangeScore = Math.round(gateChangeMax * Math.min(1, (gateChangeConfirmRate * 0.6 + speedFactor * 0.4)));
+  } else {
+    gateChangeScore = gateChangeMax;
+    gateChangeConfirmRate = 1;
+  }
+
   const mistakesMax = 150;
   const mistakePenaltyMax = scoreState.wrongCount * 30;
   const mistakesScore = Math.max(0, mistakesMax - mistakePenaltyMax);
@@ -206,8 +272,9 @@ export const calculateBreakdown = (
 
   return {
     accuracy: { score: accuracyScore, max: accuracyMax, rate: accuracyRate },
-    overweight: { score: overweightScore, max: overweightMax, avgSpeed },
+    overweight: { score: overweightScore, max: overweightMax, avgSpeed: avgOverweightSpeed },
     boarding: { score: boardingScore, max: boardingMax, completeRate: boardingRate },
+    gateChange: { score: gateChangeScore, max: gateChangeMax, confirmRate: gateChangeConfirmRate, avgSpeed: avgGateChangeSpeed },
     mistakes: { score: mistakesScore, max: mistakesMax, count: scoreState.wrongCount },
     timeBonus: { score: timeScore, max: timeMax, remaining: Math.round(gameResult.remainingMs / 1000) },
   };
@@ -252,6 +319,13 @@ export const computeFinalResult = (
     if (c.onTime) baseTotal += SCORE_BASE.ontime_boarding;
   }
 
+  for (const g of scoreState.gateChangeHandles) {
+    if (g.confirmedAt !== undefined) {
+      baseTotal += 30;
+      if (g.reactionTime && g.reactionTime < 5000) baseTotal += 15;
+    }
+  }
+
   const breakdown = calculateBreakdown(level, scoreState, {
     totalBaggage: gameState.totalBaggageGenerated,
     sortedBaggage,
@@ -260,9 +334,9 @@ export const computeFinalResult = (
   });
 
   const totalBreakdown = breakdown.accuracy.score + breakdown.overweight.score +
-    breakdown.boarding.score + breakdown.mistakes.score + breakdown.timeBonus.score;
+    breakdown.boarding.score + breakdown.gateChange.score + breakdown.mistakes.score + breakdown.timeBonus.score;
   const breakdownMax = breakdown.accuracy.max + breakdown.overweight.max +
-    breakdown.boarding.max + breakdown.mistakes.max + breakdown.timeBonus.max;
+    breakdown.boarding.max + breakdown.gateChange.max + breakdown.mistakes.max + breakdown.timeBonus.max;
 
   const combinedScore = Math.round(baseTotal * 0.5 + totalBreakdown * 0.5);
   const finalScore = Math.max(0, combinedScore - scoreState.penaltyScore);
@@ -281,5 +355,6 @@ export const computeFinalResult = (
     timestamp: Date.now(),
     overweightHandles: scoreState.overweightHandles,
     boardingCompletions: scoreState.boardingCompletions,
+    gateChangeHandles: scoreState.gateChangeHandles,
   };
 };

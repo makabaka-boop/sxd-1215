@@ -19,7 +19,7 @@ export const LEVELS: LevelConfig[] = [
     expressChance: 0.1,
     baggageExpireTime: 20000,
     events: [
-      { type: 'gate_change', startTime: 30, endTime: 80, probability: 0.3, minInterval: 20 },
+      { type: 'gate_change', startTime: 30, endTime: 80, probability: 0.3, minInterval: 20, affectedFlights: 'all' },
     ],
     unlocked: true,
   },
@@ -41,7 +41,7 @@ export const LEVELS: LevelConfig[] = [
     expressChance: 0.15,
     baggageExpireTime: 18000,
     events: [
-      { type: 'gate_change', startTime: 20, endTime: 90, probability: 0.5, minInterval: 18 },
+      { type: 'gate_change', startTime: 20, endTime: 90, probability: 0.5, minInterval: 18, affectedFlights: ['f1', 'f2'] },
       { type: 'overweight_alert', startTime: 15, endTime: 90, probability: 0.7, minInterval: 15 },
     ],
     unlocked: true,
@@ -64,7 +64,7 @@ export const LEVELS: LevelConfig[] = [
     expressChance: 0.2,
     baggageExpireTime: 15000,
     events: [
-      { type: 'gate_change', startTime: 10, endTime: 100, probability: 0.7, minInterval: 15 },
+      { type: 'gate_change', startTime: 10, endTime: 100, probability: 0.7, minInterval: 15, affectedFlights: ['f1', 'f2', 'f3'] },
       { type: 'overweight_alert', startTime: 10, endTime: 100, probability: 0.8, minInterval: 12 },
       { type: 'early_boarding', startTime: 30, endTime: 100, probability: 0.6, minInterval: 25 },
       { type: 'security_recheck', startTime: 20, endTime: 100, probability: 0.5, minInterval: 20 },
@@ -90,7 +90,7 @@ export const LEVELS: LevelConfig[] = [
     expressChance: 0.25,
     baggageExpireTime: 12000,
     events: [
-      { type: 'gate_change', startTime: 5, endTime: 115, probability: 0.9, minInterval: 10 },
+      { type: 'gate_change', startTime: 5, endTime: 115, probability: 0.9, minInterval: 10, affectedFlights: 'all' },
       { type: 'overweight_alert', startTime: 5, endTime: 115, probability: 0.9, minInterval: 10 },
       { type: 'early_boarding', startTime: 15, endTime: 110, probability: 0.8, minInterval: 18 },
       { type: 'security_recheck', startTime: 10, endTime: 115, probability: 0.75, minInterval: 15 },

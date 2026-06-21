@@ -1,5 +1,5 @@
 import type { GameEvent } from '../types';
-import { ArrowLeftRight, AlertTriangle, Timer, ShieldAlert } from 'lucide-react';
+import { ArrowLeftRight, AlertTriangle, Timer, ShieldAlert, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 
@@ -39,6 +39,7 @@ const EventIcon = ({ type }: { type: string }) => {
 
 export default function EventBanner({ events }: EventBannerProps) {
   const gameTimeMs = useGameStore((s) => s.gameTimeMs);
+  const handleGateChangeConfirm = useGameStore((s) => s.handleGateChangeConfirm);
   const activeEvents = events.filter((e) => !e.resolved);
 
   return (
@@ -48,6 +49,7 @@ export default function EventBanner({ events }: EventBannerProps) {
           {activeEvents.map((event) => {
             const elapsedSec = gameTimeMs / 1000 - event.triggerTime;
             const remainingSec = Math.max(Math.ceil(event.duration - elapsedSec), 0);
+            const isGateChange = event.type === 'gate_change';
             return (
               <motion.div
                 key={event.id}
@@ -55,7 +57,7 @@ export default function EventBanner({ events }: EventBannerProps) {
                 animate={{ y: 0, opacity: 1, scale: 1 }}
                 exit={{ y: -30, opacity: 0, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                className={`relative flex items-start gap-3 px-4 py-3 rounded-xl border-2 backdrop-blur-md min-w-[280px] max-w-[360px] animate-slide-in ${eventStyles[event.type] || ''}`}
+                className={`relative flex items-start gap-3 px-4 py-3 rounded-xl border-2 backdrop-blur-md min-w-[280px] max-w-[400px] animate-slide-in ${eventStyles[event.type] || ''}`}
               >
                 <div className="flex-shrink-0 mt-0.5">
                   <EventIcon type={event.type} />
@@ -64,7 +66,19 @@ export default function EventBanner({ events }: EventBannerProps) {
                   <div className={`font-display font-bold text-base mb-0.5 ${eventTextColors[event.type] || 'text-white'}`}>
                     {event.title}
                   </div>
-                  <div className="text-sm text-slate-300/90">{event.message}</div>
+                  <div className="text-sm text-slate-300/90 mb-2">{event.message}</div>
+                  {isGateChange && !event.confirmed && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleGateChangeConfirm(event.id);
+                      }}
+                      className="w-full py-1.5 px-3 bg-blue-500/80 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      确认新登机口
+                    </button>
+                  )}
                 </div>
                 <div className="flex-shrink-0 font-mono font-bold text-lg text-white/80">
                   {remainingSec}s

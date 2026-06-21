@@ -13,7 +13,8 @@ export type MistakeType =
   | 'overweight_ignored'
   | 'missed_boarding'
   | 'security_failed'
-  | 'baggage_expired';
+  | 'baggage_expired'
+  | 'gate_change_unconfirmed';
 
 export type BaggageStatus = 'pending' | 'processing' | 'sorted' | 'missed' | 'rejected';
 
@@ -51,6 +52,8 @@ export interface Channel {
   isBoarding: boolean;
   boardingDeadline?: number;
   changedGate?: string;
+  gateChangeConfirmed?: boolean;
+  gateChangeEventId?: string;
   baggageIds: string[];
 }
 
@@ -65,6 +68,9 @@ export interface GameEvent {
   duration: number;
   resolved: boolean;
   penalty?: number;
+  confirmed?: boolean;
+  oldGate?: string;
+  newGate?: string;
 }
 
 export interface EventConfig {
@@ -73,6 +79,7 @@ export interface EventConfig {
   endTime: number;
   probability: number;
   minInterval: number;
+  affectedFlights?: 'all' | string[];
 }
 
 export interface MistakeRecord {
@@ -91,6 +98,16 @@ export interface OverweightHandle {
   reactionTime: number;
 }
 
+export interface GateChangeHandle {
+  eventId: string;
+  flightId: string;
+  oldGate: string;
+  newGate: string;
+  confirmedAt?: number;
+  reactionTime?: number;
+  unconfirmedMistakes: number;
+}
+
 export interface BoardingCompletion {
   flightId: string;
   completedAt: number;
@@ -101,6 +118,7 @@ export interface ScoreBreakdown {
   accuracy: { score: number; max: number; rate: number };
   overweight: { score: number; max: number; avgSpeed: number };
   boarding: { score: number; max: number; completeRate: number };
+  gateChange: { score: number; max: number; confirmRate: number; avgSpeed: number };
   mistakes: { score: number; max: number; count: number };
   timeBonus: { score: number; max: number; remaining: number };
 }
@@ -117,6 +135,7 @@ export interface GameResult {
   timestamp: number;
   overweightHandles: OverweightHandle[];
   boardingCompletions: BoardingCompletion[];
+  gateChangeHandles: GateChangeHandle[];
 }
 
 export interface LevelConfig {
@@ -141,6 +160,11 @@ export interface HighScoreRecord {
   score: number;
   grade: Grade;
   timestamp: number;
+  gateChangeStats?: {
+    triggerCount: number;
+    confirmCount: number;
+    unconfirmedCount: number;
+  };
 }
 
 export interface GameSettings {

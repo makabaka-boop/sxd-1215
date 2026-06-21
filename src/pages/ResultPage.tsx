@@ -5,7 +5,7 @@ import { getLastResult, getHighScoreByLevel, saveHighScore, isLevelUnlocked } fr
 import GradeBadge from '../components/GradeBadge';
 import ScoreCard from '../components/ScoreCard';
 import MistakeTimeline from '../components/MistakeTimeline';
-import { ArrowLeft, RotateCcw, Layers, Home, Target, Gauge, PlaneTakeoff, AlertCircle, Timer, TrendingUp, Award } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Layers, Home, Target, Gauge, PlaneTakeoff, AlertCircle, Timer, TrendingUp, Award, ArrowLeftRight } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 
 function formatNumber(num: number): string {
@@ -74,12 +74,17 @@ export default function ResultPage() {
     );
   }
 
-  const { breakdown, grade, totalScore, sortedCount, totalBaggageCount, playTime, mistakes, overweightHandles, boardingCompletions } = result;
+  const { breakdown, grade, totalScore, sortedCount, totalBaggageCount, playTime, mistakes, overweightHandles, boardingCompletions, gateChangeHandles } = result;
 
   const accuracyRate = breakdown.accuracy.max > 0 ? Math.round(breakdown.accuracy.rate * 100) : 0;
   const avgSpeed = breakdown.overweight.avgSpeed;
   const completeRate = breakdown.boarding.max > 0 ? Math.round(breakdown.boarding.completeRate * 100) : 100;
   const mistakeCount = breakdown.mistakes.count;
+  const gateChangeTriggerCount = gateChangeHandles.length;
+  const gateChangeConfirmCount = gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
+  const gateChangeUnconfirmCount = gateChangeHandles.filter(h => h.confirmedAt === undefined).length;
+  const gateChangeConfirmRate = gateChangeTriggerCount > 0 ? Math.round((gateChangeConfirmCount / gateChangeTriggerCount) * 100) : 100;
+  const avgGateChangeSpeed = breakdown.gateChange.avgSpeed;
 
   const isBeaten = prevHighScore !== null && totalScore > prevHighScore;
 
@@ -188,6 +193,15 @@ export default function ResultPage() {
                 extra={boardingCompletions.length > 0 ? `完成率 ${completeRate}%` : '无截载事件'}
                 colorClass="text-orange-400"
                 barColorClass="bg-orange-500"
+              />
+              <ScoreCard
+                icon={<ArrowLeftRight className="w-6 h-6" />}
+                label="登机口变更处理"
+                score={breakdown.gateChange.score}
+                max={breakdown.gateChange.max}
+                extra={gateChangeTriggerCount > 0 ? `触发 ${gateChangeTriggerCount} 次 · 确认 ${gateChangeConfirmCount} 次 · 漏确认 ${gateChangeUnconfirmCount} 次` : '无登机口变更'}
+                colorClass="text-blue-400"
+                barColorClass="bg-blue-500"
               />
               <ScoreCard
                 icon={<AlertCircle className="w-6 h-6" />}

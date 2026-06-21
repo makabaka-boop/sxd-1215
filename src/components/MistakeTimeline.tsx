@@ -1,5 +1,5 @@
 import type { MistakeRecord, MistakeType } from '../types';
-import { XCircle, AlertTriangle, TimerOff, ShieldAlert, Clock } from 'lucide-react';
+import { XCircle, AlertTriangle, TimerOff, ShieldAlert, Clock, ArrowLeftRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface MistakeTimelineProps {
@@ -13,6 +13,7 @@ const mistakeIcon: Record<MistakeType, React.ReactNode> = {
   missed_boarding: <TimerOff className="w-4 h-4" />,
   security_failed: <ShieldAlert className="w-4 h-4" />,
   baggage_expired: <Clock className="w-4 h-4" />,
+  gate_change_unconfirmed: <ArrowLeftRight className="w-4 h-4" />,
 };
 
 const mistakeSeverity: Record<MistakeType, { dot: string; icon: string; penalty: string }> = {
@@ -21,6 +22,7 @@ const mistakeSeverity: Record<MistakeType, { dot: string; icon: string; penalty:
   missed_boarding: { dot: 'bg-red-500', icon: 'text-red-400', penalty: 'text-red-400' },
   security_failed: { dot: 'bg-orange-500', icon: 'text-orange-400', penalty: 'text-orange-400' },
   baggage_expired: { dot: 'bg-yellow-500', icon: 'text-yellow-400', penalty: 'text-yellow-400' },
+  gate_change_unconfirmed: { dot: 'bg-blue-500', icon: 'text-blue-400', penalty: 'text-blue-400' },
 };
 
 function formatTime(ms: number): string {
