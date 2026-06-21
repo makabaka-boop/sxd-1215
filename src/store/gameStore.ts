@@ -587,11 +587,17 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const s = get();
     if (s.status !== 'playing') return;
 
-    const event = s.activeEvents.find(e => e.id === eventId);
-    if (!event || event.type !== 'gate_change' || event.confirmed) return;
+    const handle = s.scoreState.gateChangeHandles.find(h => h.eventId === eventId);
+    if (!handle) return;
 
-    const gameTimeSec = s.gameTimeMs / 1000;
-    const reactionTime = s.gameTimeMs - event.triggerTime * 1000;
+    const relatedChannel = s.channels.find(ch => ch.gateChangeEventId === eventId);
+    if (!relatedChannel || relatedChannel.gateChangeConfirmed) return;
+
+    const event = s.activeEvents.find(e => e.id === eventId)
+      || s.pastEvents.find(e => e.id === eventId);
+
+    const triggerTimeMs = (event?.triggerTime || handle.confirmedAt || 0) * 1000;
+    const reactionTime = s.gameTimeMs - triggerTimeMs;
 
     let bonus = 30;
     if (reactionTime < 5000) bonus += 15;
@@ -606,9 +612,18 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       ),
     };
 
-    const newActiveEvents = s.activeEvents.map(e =>
-      e.id === eventId ? { ...e, confirmed: true, resolved: true } : e
-    );
+    let newActiveEvents = s.activeEvents;
+    let newPastEvents = s.pastEvents;
+    if (event && !event.confirmed) {
+      newActiveEvents = s.activeEvents.map(e =>
+        e.id === eventId ? { ...e, confirmed: true, resolved: true } : e
+      );
+      const foundInActive = s.activeEvents.some(e => e.id === eventId);
+      if (foundInActive) {
+        newPastEvents = [...s.pastEvents, ...newActiveEvents.filter(e => e.id === eventId && e.resolved)];
+        newActiveEvents = newActiveEvents.filter(e => !(e.id === eventId && e.resolved));
+      }
+    }
 
     const newChannels = s.channels.map(ch =>
       ch.gateChangeEventId === eventId
@@ -616,19 +631,16 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         : ch
     );
 
-    const newPastEvents = [...s.pastEvents, ...newActiveEvents.filter(e => e.id === eventId && e.resolved)];
-    const filteredActiveEvents = newActiveEvents.filter(e => !(e.id === eventId && e.resolved));
-
-    const flight = s.level?.flights.find(f => f.id === event.relatedFlightId);
+    const flight = s.level?.flights.find(f => f.id === handle.flightId);
     const newToasts = addToast(
       s.toasts,
       'success',
-      `登机口已确认 ${flight?.flightNo || ''}: ${event.oldGate} → ${event.newGate} +${bonus}`
+      `登机口已确认 ${flight?.flightNo || ''}: ${handle.oldGate} → ${handle.newGate} +${bonus}`
     );
 
     set({
       scoreState: newScoreState,
-      activeEvents: filteredActiveEvents,
+      activeEvents: newActiveEvents,
       pastEvents: newPastEvents,
       channels: newChannels,
       toasts: newToasts,

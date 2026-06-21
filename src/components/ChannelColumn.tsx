@@ -28,6 +28,7 @@ export default function ChannelColumn({
 }: ChannelColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const gameTimeMs = useGameStore((s) => s.gameTimeMs);
+  const handleGateChangeConfirm = useGameStore((s) => s.handleGateChangeConfirm);
 
   const flightColor = getFlightColor(channel.flightId);
   const capacityPercent = channel.capacity > 0 ? (channel.currentLoad / channel.capacity) * 100 : 0;
@@ -85,7 +86,7 @@ export default function ChannelColumn({
 
       <div className="flex items-center justify-center gap-2 py-1">
         {channel.changedGate ? (
-          <div className="flex flex-col items-center gap-1">
+          <div className="flex flex-col items-center gap-1 w-full">
             <div className="flex items-center gap-1">
               <span className="text-sm text-slate-500 line-through">{flight?.gate || '--'}</span>
               <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" />
@@ -97,10 +98,24 @@ export default function ChannelColumn({
                 <span className="text-[10px] font-medium text-emerald-400">已确认</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 animate-pulse">
-                <AlertTriangle className="w-3 h-3 text-orange-400" />
-                <span className="text-[10px] font-medium text-orange-400">待确认</span>
-              </div>
+              <>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 animate-pulse">
+                  <AlertTriangle className="w-3 h-3 text-orange-400" />
+                  <span className="text-[10px] font-medium text-orange-400">待确认</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (channel.gateChangeEventId) {
+                      handleGateChangeConfirm(channel.gateChangeEventId);
+                    }
+                  }}
+                  className="w-full py-1 px-2 bg-blue-500/80 hover:bg-blue-500 text-white text-[10px] font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors"
+                >
+                  <CheckCircle className="w-3 h-3" />
+                  确认新登机口
+                </button>
+              </>
             )}
           </div>
         ) : (

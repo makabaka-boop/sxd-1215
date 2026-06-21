@@ -82,7 +82,7 @@ export default function ResultPage() {
   const mistakeCount = breakdown.mistakes.count;
   const gateChangeTriggerCount = gateChangeHandles.length;
   const gateChangeConfirmCount = gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
-  const gateChangeUnconfirmCount = gateChangeHandles.filter(h => h.confirmedAt === undefined).length;
+  const gateChangeUnconfirmCount = gateChangeHandles.reduce((sum, h) => sum + h.unconfirmedMistakes, 0);
   const gateChangeConfirmRate = gateChangeTriggerCount > 0 ? Math.round((gateChangeConfirmCount / gateChangeTriggerCount) * 100) : 100;
   const avgGateChangeSpeed = breakdown.gateChange.avgSpeed;
 

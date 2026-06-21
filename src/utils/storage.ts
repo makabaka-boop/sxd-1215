@@ -34,7 +34,7 @@ export const saveHighScore = (result: GameResult): HighScoreRecord | null => {
 
   const triggerCount = result.gateChangeHandles.length;
   const confirmCount = result.gateChangeHandles.filter(h => h.confirmedAt !== undefined).length;
-  const unconfirmedCount = result.gateChangeHandles.filter(h => h.confirmedAt === undefined).length;
+  const unconfirmedCount = result.gateChangeHandles.reduce((sum, h) => sum + h.unconfirmedMistakes, 0);
 
   const newRecord: HighScoreRecord = {
     levelId: result.levelId,
